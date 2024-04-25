@@ -42,6 +42,7 @@ type Exporter struct {
 	locustWorkersMissingCount prometheus.Gauge
 	locustNumRequests,
 	locustCurrentResponseTimePercentileNinetieth,
+	locustCurrentResponseTimePercentilePerRouteNinetyFifth,
 	locustCurrentResponseTimePercentileNinetyNinth,
 	locustNumFailures,
 	locustAvgResponseTime,
@@ -106,7 +107,7 @@ func NewExporter(uri string, timeout time.Duration) (*Exporter, error) {
 			prometheus.GaugeOpts{
 				Namespace: namespace,
 				Subsystem: "requests",
-				Name:      "current_response_time_percentile_95",
+				Name:      "current_response_time_percentile_95_aggregate",
 			},
 		),
 		locustCurrentResponseTimePercentileFiftieth: prometheus.NewGauge(
@@ -177,6 +178,15 @@ func NewExporter(uri string, timeout time.Duration) (*Exporter, error) {
 			},
 			[]string{"method", "name"},
 		),
+		locustCurrentResponseTimePercentilePerRouteNinetyFifth: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "requests",
+				Name:      "current_response_time_percentile_95",
+			},
+			[]string{"method", "name"},
+		),
+
 		locustCurrentResponseTimePercentileNinetieth: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
@@ -185,6 +195,7 @@ func NewExporter(uri string, timeout time.Duration) (*Exporter, error) {
 			},
 			[]string{"method", "name"},
 		),
+
 		locustCurrentResponseTimePercentileNinetyNinth: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
@@ -281,6 +292,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.locustAvgResponseTime.Describe(ch)
 	e.locustCurrentResponseTimePercentileNinetieth.Describe(ch)
 	e.locustCurrentResponseTimePercentileNinetyNinth.Describe(ch)
+	e.locustCurrentResponseTimePercentilePerRouteNinetyFifth.Describe(ch)
 	e.locustCurrentFailPerSec.Describe(ch)
 	e.locustMinResponseTime.Describe(ch)
 	e.locustMaxResponseTime.Describe(ch)
@@ -302,6 +314,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.locustNumFailures.Collect(ch)
 	e.locustAvgResponseTime.Collect(ch)
 	e.locustCurrentResponseTimePercentileNinetieth.Collect(ch)
+	e.locustCurrentResponseTimePercentilePerRouteNinetyFifth.Collect(ch)
 	e.locustCurrentResponseTimePercentileNinetyNinth.Collect(ch)
 	e.locustCurrentFailPerSec.Collect(ch)
 	e.locustMinResponseTime.Collect(ch)
@@ -322,6 +335,7 @@ type locustStats struct {
 		AvgResponseTime float64 `json:"avg_response_time"`
 
 		NinetiethPercentileResponseTime   float64 `json:"ninetieth_response_time"`
+		NinetyFifthPercentileResponseTime float64 `json:"response_time_percentile_0.95"`
 		NinetyNinthPercentileResponseTime float64 `json:"ninety_ninth_response_time"`
 		CurrentFailPerSec                 float64 `json:"current_fail_per_sec"`
 		MinResponseTime                   float64 `json:"min_response_time"`
@@ -384,6 +398,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) (up float64) {
 			e.locustNumFailures.WithLabelValues(r.Method, r.Name).Set(float64(r.NumFailures))
 			e.locustAvgResponseTime.WithLabelValues(r.Method, r.Name).Set(r.AvgResponseTime)
 			e.locustCurrentResponseTimePercentileNinetieth.WithLabelValues(r.Method, r.Name).Set(r.NinetiethPercentileResponseTime)
+			e.locustCurrentResponseTimePercentilePerRouteNinetyFifth.WithLabelValues(r.Method, r.Name).Set(r.NinetyFifthPercentileResponseTime)
 			e.locustCurrentResponseTimePercentileNinetyNinth.WithLabelValues(r.Method, r.Name).Set(r.NinetyNinthPercentileResponseTime)
 			e.locustCurrentFailPerSec.WithLabelValues(r.Method, r.Name).Set(r.CurrentFailPerSec)
 			e.locustMinResponseTime.WithLabelValues(r.Method, r.Name).Set(r.MinResponseTime)
